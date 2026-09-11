@@ -1,0 +1,6 @@
+# Claude tooling instructions, not project content
+.claude/
+
+# Static image assets carry no project semantics
+*.png
+*.svg
