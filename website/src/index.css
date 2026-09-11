@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+@theme {
+  /* Surfaces */
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-border: hsl(var(--border));
+
+  /* Donut Palette - Light/Dark mappings handled via variables */
+  --color-donut-1: var(--donut-1);
+  --color-donut-2: var(--donut-2);
+  --color-donut-3: var(--donut-3);
+  --color-donut-4: var(--donut-4);
+  --color-donut-5: var(--donut-5);
+  --color-donut-6: var(--donut-6);
+  --color-donut-7: var(--donut-7);
+  --color-donut-8: var(--donut-8);
+  --color-donut-other: var(--donut-other);
+}
+
+:root {
+  /* Surface: #fcfcfb */
+  --background: 60 20% 99%;
+  /* Foreground: #0b0b0b */
+  --foreground: 0 0% 4%;
+  /* Muted: #898781 */
+  --muted: 35 4% 54%;
+  --muted-foreground: 35 4% 40%;
+  --border: 35 4% 90%;
+
+  /* Donut Palette - Light */
+  --donut-1: #2a78d6;
+  --donut-2: #eb6834;
+  --donut-3: #1baf7a;
+  --donut-4: #eda100;
+  --donut-5: #e87ba4;
+  --donut-6: #008300;
+  --donut-7: #4a3aa7;
+  --donut-8: #e34948;
+  --donut-other: #898781;
+}
+
+.dark {
+  /* Surface: #1a1a19 */
+  --background: 359 6% 11%;
+  /* Foreground: #ffffff */
+  --foreground: 0 0% 100%;
+  /* Muted: #898781 */
+  --muted: 35 4% 54%;
+  --muted-foreground: 35 4% 65%;
+  --border: 35 4% 20%;
+
+  /* Donut Palette - Dark */
+  --donut-1: #3987e5;
+  --donut-2: #d95926;
+  --donut-3: #199e70;
+  --donut-4: #c98500;
+  --donut-5: #d55181;
+  --donut-6: #008300;
+  --donut-7: #9085e9;
+  --donut-8: #e66767;
+  --donut-other: #898781;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "tnum"; /* Enable tabular-nums for tables as per spec */
+  }
+}
