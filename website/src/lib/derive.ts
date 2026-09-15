@@ -102,6 +102,80 @@ export function buildSplit(records: readonly RecordItem[], categories: readonly 
   }
 }
 
+export interface NetWorthPoint {
+  date: string
+  value: number
+}
+
+const ymd = (d: Date) =>
+  `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+
+export function currentMonthRange(): { startYMD: string; endYMD: string; startMs: number; endMs: number } {
+  const now = new Date()
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0))
+  return {
+    startYMD: ymd(start),
+    endYMD: ymd(end),
+    startMs: start.getTime(),
+    endMs: end.getTime(),
+  }
+}
+
+export function buildNetWorthHistory(
+  recordsByKind: readonly RecordItem[][],
+  range?: { startMs: number; endMs: number },
+): NetWorthPoint[] {
+  type Dated = { dateMs: number; date: string; signed: number }
+  const dated: Dated[] = []
+  let initialBalance = 0
+
+  for (let i = 0; i < KINDS.length; i++) {
+    const sign = KINDS[i].sign
+    for (const r of recordsByKind[i]) {
+      const ymdStr = r.date.slice(0, 10)
+      const dateMs = new Date(ymdStr + 'T00:00:00Z').getTime()
+      if (!Number.isFinite(dateMs)) continue
+      const signed = sign * r.amount
+      if (range && dateMs < range.startMs) {
+        initialBalance += signed
+      } else if (!range || (dateMs >= range.startMs && dateMs <= range.endMs)) {
+        dated.push({ dateMs, date: ymdStr, signed })
+      }
+    }
+  }
+
+  const byDay = new Map<number, { date: string; delta: number }>()
+  for (const d of dated) {
+    const cur = byDay.get(d.dateMs)
+    if (cur) cur.delta += d.signed
+    else byDay.set(d.dateMs, { date: d.date, delta: d.signed })
+  }
+
+  const sortedDays = [...byDay.values()].sort(
+    (a, b) => new Date(a.date + 'T00:00:00Z').getTime() - new Date(b.date + 'T00:00:00Z').getTime(),
+  )
+
+  const points: NetWorthPoint[] = []
+  let cum = initialBalance
+
+  if (range) {
+    const startYMD = ymd(new Date(range.startMs))
+    points.push({ date: startYMD, value: cum })
+  }
+
+  for (const day of sortedDays) {
+    cum += day.delta
+    if (points.length > 0 && points[points.length - 1].date === day.date) {
+      points[points.length - 1].value = cum
+    } else {
+      points.push({ date: day.date, value: cum })
+    }
+  }
+
+  return points
+}
+
 /** Palette slot for a category (null past slot 8 or when unknown). */
 export function categorySlot(categoryId: string, categories: readonly CategoryItem[]): number | null {
   const index = sortByCreation(categories).findIndex((c) => c.id === categoryId)

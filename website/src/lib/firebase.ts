@@ -1,6 +1,13 @@
 // Firebase app + Auth. The only module that touches Auth.
 import { initializeApp } from 'firebase/app'
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth'
+import {
+  createUserWithEmailAndPassword,
+  getAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+  updateProfile,
+} from 'firebase/auth'
 
 const env = import.meta.env
 const config = {
@@ -20,14 +27,37 @@ if (firebaseConfigured) initializeApp(config)
 export interface AuthUser {
   uid: string
   email: string | null
+  displayName: string | null
 }
 
 export function watchAuth(onChange: (user: AuthUser | null) => void): () => void {
-  return onAuthStateChanged(getAuth(), (u) => onChange(u ? { uid: u.uid, email: u.email } : null))
+  return onAuthStateChanged(getAuth(), (u) =>
+    onChange(u ? { uid: u.uid, email: u.email, displayName: u.displayName } : null),
+  )
 }
 
 export async function signIn(email: string, password: string): Promise<void> {
   await signInWithEmailAndPassword(getAuth(), email, password)
+}
+
+export async function signUp(email: string, password: string, name?: string): Promise<void> {
+  const cred = await createUserWithEmailAndPassword(getAuth(), email, password)
+  if (name && name.trim() && cred.user) {
+    await updateProfile(cred.user, { displayName: name.trim() })
+  }
+}
+
+export async function updateUserProfileName(name: string): Promise<AuthUser> {
+  const user = getAuth().currentUser
+  if (!user) throw new Error('Not authenticated')
+  await updateProfile(user, { displayName: name.trim() })
+  await user.reload()
+  const updated = getAuth().currentUser!
+  return {
+    uid: updated.uid,
+    email: updated.email,
+    displayName: updated.displayName,
+  }
 }
 
 export function signOutUser(): Promise<void> {
@@ -42,6 +72,10 @@ export function authErrorMessage(error: unknown): string {
     case 'auth/user-not-found':
     case 'auth/wrong-password':
       return 'Incorrect email or password.'
+    case 'auth/email-already-in-use':
+      return 'This email is already registered.'
+    case 'auth/weak-password':
+      return 'Password is too weak.'
     case 'auth/too-many-requests':
       return 'Too many attempts. Wait a moment and try again.'
     case 'auth/network-request-failed':

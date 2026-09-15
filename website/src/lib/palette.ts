@@ -7,7 +7,7 @@ export const DONUT_SLOTS = {
 
 export const SLOT_COUNT = 8
 export const OTHER_COLOR = '#898781'
-export const SURFACE = { light: '#fcfcfb', dark: '#1a1a19' } as const
+export const SURFACE = { light: '#faf8f4', dark: '#1d1c19' } as const
 
 export type ColorScheme = keyof typeof SURFACE
 
