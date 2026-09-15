@@ -6,11 +6,44 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+firebase-debug.log*
+firebase-debug.*.log*
 
-node_modules
-dist
-dist-ssr
+# Dependencies
+node_modules/
+bower_components/
+
+# Build and Output
+dist/
+dist-ssr/
+build/Release/
+*.tgz
+
+# Firebase
+.firebase/
+.firebaserc
+
+
+# Environment
+.env
+.env.local
 *.local
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage and Tooling
+lib-cov
+coverage
+.nyc_output
+.grunt
+.eslintcache
+.node_repl_history
+.npm
+.dataconnect
 
 # Editor directories and files
 .vscode/*
