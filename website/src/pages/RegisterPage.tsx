@@ -1,23 +1,20 @@
 import { useState, type FormEvent } from 'react'
-import { Moon, Sun, Wallet } from 'lucide-react'
+import { Wallet } from 'lucide-react'
 import { Navigate, useLocation, Link } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input, Label } from '@/components/ui/input'
-import { useThemeToggle } from '@/hooks/useColorScheme'
-import { authErrorMessage, signIn } from '@/lib/firebase'
+import { authErrorMessage, signUp } from '@/lib/firebase'
 import { useAppSelector } from '@/store'
 
-export function LoginPage() {
+export function RegisterPage() {
   const status = useAppSelector((s) => s.auth.status)
   const from = (useLocation().state as { from?: string } | null)?.from ?? '/'
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
-  const { scheme, setLight, setDark } = useThemeToggle()
-  const isDark = scheme === 'dark'
-  const ThemeIcon = isDark ? Sun : Moon
 
   if (status === 'signedIn') return <Navigate to={from} replace />
 
@@ -26,7 +23,7 @@ export function LoginPage() {
     setPending(true)
     setError(null)
     try {
-      await signIn(email.trim(), password)
+      await signUp(email.trim(), password, name.trim())
     } catch (err) {
       setError(authErrorMessage(err))
     } finally {
@@ -35,27 +32,28 @@ export function LoginPage() {
   }
 
   return (
-    <main className="relative grid min-h-screen place-items-center px-4 bg-background text-foreground">
-      <div className="absolute right-4 top-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="rounded-xl size-9 text-muted-foreground hover:text-foreground"
-          aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
-          onClick={() => (isDark ? setLight() : setDark())}
-        >
-          <ThemeIcon aria-hidden className="size-4" />
-        </Button>
-      </div>
+    <main className="grid min-h-screen place-items-center px-4 bg-background text-foreground">
       <Card className="w-full max-w-sm p-6 sm:p-8 rounded-3xl border border-border/80 shadow-2xl grid gap-6">
         <div className="flex flex-col items-center text-center gap-2">
           <div className="flex size-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-md mb-1">
             <Wallet className="size-6" />
           </div>
-          <h1 className="text-2xl font-extrabold tracking-tight">MyExpenseLog</h1>
-          <p className="text-xs text-muted-foreground font-medium">Sign in to your personal financial ledger</p>
+          <h1 className="text-2xl font-extrabold tracking-tight">Create Account</h1>
+          <p className="text-xs text-muted-foreground font-medium">Start tracking your income, expenses & investments</p>
         </div>
         <form onSubmit={submit} className="grid gap-4" noValidate>
+          <div className="grid gap-1.5">
+            <Label htmlFor="name" className="text-xs font-semibold">Full Name</Label>
+            <Input
+              id="name"
+              type="text"
+              placeholder="Jane Doe"
+              autoComplete="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="rounded-xl"
+            />
+          </div>
           <div className="grid gap-1.5">
             <Label htmlFor="email" className="text-xs font-semibold">Email address</Label>
             <Input
@@ -75,7 +73,7 @@ export function LoginPage() {
               id="password"
               type="password"
               placeholder="••••••••"
-              autoComplete="current-password"
+              autoComplete="new-password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -92,13 +90,13 @@ export function LoginPage() {
             className="rounded-xl shadow-xs font-semibold h-10 mt-1 cursor-pointer"
             disabled={pending || !email || !password || status === 'loading'}
           >
-            {pending ? 'Signing in…' : 'Sign in'}
+            {pending ? 'Creating account…' : 'Register'}
           </Button>
         </form>
         <div className="text-center text-xs text-muted-foreground pt-1 border-t border-border/60">
-          Don't have an account?{' '}
-          <Link to="/register" className="text-primary font-semibold hover:underline underline-offset-4">
-            Register now
+          Already have an account?{' '}
+          <Link to="/login" className="text-primary font-semibold hover:underline underline-offset-4">
+            Sign in
           </Link>
         </div>
       </Card>

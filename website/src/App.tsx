@@ -6,7 +6,9 @@ import { KINDS } from '@/lib/kinds'
 import { CategoriesPage } from '@/pages/CategoriesPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { LoginPage } from '@/pages/LoginPage'
+import { ProfilePage } from '@/pages/ProfilePage'
 import { RecordsPage } from '@/pages/RecordsPage'
+import { RegisterPage } from '@/pages/RegisterPage'
 import { store } from '@/store'
 import { useFirebaseSync } from '@/store/useFirebaseSync'
 
@@ -15,12 +17,14 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
       <Route element={<AppLayout />}>
         <Route index element={<DashboardPage />} />
         {KINDS.map((k) => (
           <Route key={k.kind} path={k.path} element={<RecordsPage key={k.kind} kind={k} />} />
         ))}
         <Route path="/category" element={<CategoriesPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

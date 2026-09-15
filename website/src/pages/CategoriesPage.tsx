@@ -6,11 +6,10 @@ import { KINDS } from '@/lib/kinds'
 export function CategoriesPage() {
   return (
     <div className="grid gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Categories</h1>
       <Tabs defaultValue={KINDS[0].kind}>
-        <TabsList className="lg:hidden">
+        <TabsList className="w-full flex overflow-x-auto justify-start border-b rounded-none bg-transparent p-0 gap-1 lg:hidden">
           {KINDS.map((k) => (
-            <TabsTrigger key={k.kind} value={k.kind}>
+            <TabsTrigger key={k.kind} value={k.kind} className="rounded-md px-3 py-1.5 text-sm font-medium">
               {k.label}
             </TabsTrigger>
           ))}
