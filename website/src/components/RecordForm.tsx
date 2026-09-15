@@ -1,10 +1,12 @@
 import { useId, useRef, useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
-import { FieldError, Input, Label, NativeSelect, Textarea } from '@/components/ui/input'
+import { FieldError, Input, Label, Textarea } from '@/components/ui/input'
+import { useColorScheme } from '@/hooks/useColorScheme'
 import { addRecord, errorMessage, updateRecord } from '@/lib/db'
-import { OTHER_LABEL } from '@/lib/derive'
 import type { KindMeta } from '@/lib/kinds'
+import { SLOT_COUNT, slotColor } from '@/lib/palette'
 import type { CategoryItem, RecordItem } from '@/lib/types'
+import { cn } from '@/lib/utils'
 import {
   NOTES_MAX,
   isoToDateInput,
@@ -30,6 +32,7 @@ type Errors = Partial<Record<'amount' | 'date' | 'notes' | 'form', string>>
 
 export function RecordForm({ kind, categories, editing, onDone }: RecordFormProps) {
   const uid = useUid()
+  const scheme = useColorScheme()
   const id = useId()
   const amountRef = useRef<HTMLInputElement>(null)
   const [amount, setAmount] = useState(editing ? String(editing.amount) : '')
@@ -84,10 +87,13 @@ export function RecordForm({ kind, categories, editing, onDone }: RecordFormProp
   const describedBy = (field: keyof Errors) => (errors[field] ? `${id}-${field}-error` : undefined)
 
   return (
-    <form onSubmit={submit} noValidate className="grid gap-4">
-      <div className="grid gap-4 sm:grid-cols-3">
+    <form onSubmit={submit} noValidate className="grid gap-5">
+      {/* Line 1: Amount & Date */}
+      <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid content-start gap-1.5">
-          <Label htmlFor={`${id}-amount`}>Amount</Label>
+          <Label htmlFor={`${id}-amount`} className="text-xs font-semibold">
+            Amount ($)
+          </Label>
           <Input
             ref={amountRef}
             id={`${id}-amount`}
@@ -96,46 +102,68 @@ export function RecordForm({ kind, categories, editing, onDone }: RecordFormProp
             placeholder="0.00"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
+            className="rounded-xl"
             aria-invalid={Boolean(errors.amount)}
             aria-describedby={describedBy('amount')}
           />
           <FieldError id={`${id}-amount-error`} message={errors.amount} />
         </div>
         <div className="grid content-start gap-1.5">
-          <Label htmlFor={`${id}-date`}>Date</Label>
+          <Label htmlFor={`${id}-date`} className="text-xs font-semibold">
+            Date
+          </Label>
           <Input
             id={`${id}-date`}
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
+            className="rounded-xl"
             aria-invalid={Boolean(errors.date)}
             aria-describedby={describedBy('date')}
           />
           <FieldError id={`${id}-date-error`} message={errors.date} />
         </div>
-        <div className="grid content-start gap-1.5">
-          <Label htmlFor={`${id}-category`}>{kind.noun}</Label>
-          <NativeSelect
-            id={`${id}-category`}
-            value={known ? categoryId : OTHER_VALUE}
-            onChange={(e) => setCategoryId(e.target.value)}
-          >
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-            <option value={OTHER_VALUE}>{OTHER_LABEL}</option>
-          </NativeSelect>
-          {categories.length === 0 && (
-            <p className="text-xs text-muted-foreground">No {kind.nounPlural} yet — add them on the Categories page.</p>
-          )}
-        </div>
       </div>
 
+      {/* Line 2: Sources / Categories Clickable Widgets */}
+      {categories.length > 0 && (
+        <div className="grid gap-2">
+          <div className="flex items-baseline justify-between">
+            <Label className="text-xs font-semibold">Source / {kind.noun}</Label>
+            <span className="text-[11px] text-muted-foreground">Select one or leave unselected for Other</span>
+          </div>
+          <div className="flex flex-wrap gap-2 pt-1 max-h-36 overflow-y-auto pr-1" role="radiogroup" aria-label="Select source">
+            {categories.map((c, index) => {
+              const selected = categoryId === c.id
+              const slot = index < SLOT_COUNT ? index : null
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setCategoryId(selected ? OTHER_VALUE : c.id)}
+                  className={cn(
+                    'px-3 py-1.5 rounded-xl text-xs font-medium border transition-all text-left flex items-center gap-2 cursor-pointer',
+                    selected
+                      ? 'border-primary bg-primary/10 text-primary shadow-xs ring-1 ring-primary font-semibold'
+                      : 'border-border/80 bg-background text-foreground hover:bg-muted',
+                  )}
+                >
+                  <span
+                    className="size-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: slotColor(slot, scheme) }}
+                  />
+                  <span>{c.name}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Line 3: Notes */}
       <div className="grid gap-1.5">
         <div className="flex items-baseline justify-between">
-          <Label htmlFor={`${id}-notes`}>
+          <Label htmlFor={`${id}-notes`} className="text-xs font-semibold">
             Notes <span className="font-normal text-muted-foreground">(optional)</span>
           </Label>
           <span className="text-xs text-muted-foreground" aria-live="polite">
@@ -145,8 +173,10 @@ export function RecordForm({ kind, categories, editing, onDone }: RecordFormProp
         <Textarea
           id={`${id}-notes`}
           rows={2}
+          placeholder="Add optional notes or descriptions…"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
+          className="rounded-xl text-xs"
           aria-invalid={Boolean(errors.notes)}
           aria-describedby={describedBy('notes')}
         />
@@ -154,21 +184,21 @@ export function RecordForm({ kind, categories, editing, onDone }: RecordFormProp
       </div>
 
       {errors.form && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-destructive font-medium">
           {errors.form}
         </p>
       )}
 
-      <div className="flex gap-2">
-        <Button type="submit" disabled={pending}>
+      {/* Line 4: Actions */}
+      <div className="flex items-center justify-end gap-2 pt-3 border-t border-border/60">
+        <Button type="button" variant="outline" className="rounded-xl" onClick={onDone} disabled={pending}>
+          Cancel
+        </Button>
+        <Button type="submit" className="rounded-xl shadow-xs" disabled={pending}>
           {pending ? 'Saving…' : editing ? 'Save changes' : `Add ${kind.label.toLowerCase()}`}
         </Button>
-        {editing && (
-          <Button type="button" variant="outline" onClick={onDone}>
-            Cancel
-          </Button>
-        )}
       </div>
     </form>
   )
 }
+

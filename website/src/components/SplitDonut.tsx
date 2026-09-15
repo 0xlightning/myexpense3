@@ -1,48 +1,20 @@
-import { useId, useMemo, useState } from 'react'
-import { Link } from 'react-router'
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, type PieLabelRenderProps } from 'recharts'
-import { EmptyState, ErrorState, LoadingLabel } from '@/components/States'
-import { Button } from '@/components/ui/button'
+import { useId, useMemo } from 'react'
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
+import { ErrorState, LoadingLabel } from '@/components/States'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useColorScheme } from '@/hooks/useColorScheme'
-import { buildSplit, type Slice } from '@/lib/derive'
+import { buildSplit, sortByCreation, type Slice } from '@/lib/derive'
 import { formatCurrency, formatShare, plural } from '@/lib/format'
 import type { KindMeta } from '@/lib/kinds'
-import { SURFACE, slotColor } from '@/lib/palette'
+import { SLOT_COUNT, SURFACE, slotColor } from '@/lib/palette'
 import { useCategories, useRecords } from '@/store'
-
-const DIRECT_LABEL_MAX = 4
-const RADIAN = Math.PI / 180
-
-const truncate = (s: string, max = 14) => (s.length > max ? `${s.slice(0, max - 1)}…` : s)
-
-// Direct labels stay in ink, never the series colour.
-function renderLabel({ cx, cy, midAngle, outerRadius, name }: PieLabelRenderProps) {
-  const radius = Number(outerRadius) + 10
-  const angle = -Number(midAngle ?? 0) * RADIAN
-  const x = Number(cx) + radius * Math.cos(angle)
-  const y = Number(cy) + radius * Math.sin(angle)
-  return (
-    <text
-      x={x}
-      y={y}
-      textAnchor={x >= Number(cx) ? 'start' : 'end'}
-      dominantBaseline="central"
-      className="fill-foreground text-xs"
-    >
-      {truncate(String(name))}
-    </text>
-  )
-}
 
 export function SplitDonut({ kind }: { kind: KindMeta }) {
   const records = useRecords(kind)
   const categories = useCategories(kind)
   const scheme = useColorScheme()
-  const [showTable, setShowTable] = useState(false)
   const titleId = useId()
-  const tableId = useId()
   const split = useMemo(() => buildSplit(records.items, categories.items), [records.items, categories.items])
 
   const failed = [records, categories].find((s) => s.status === 'error')
@@ -51,70 +23,78 @@ export function SplitDonut({ kind }: { kind: KindMeta }) {
   const single = split.slices.length === 1 ? split.slices[0] : null
   const title = single ? `${kind.label}: ${single.name}` : `${kind.label} by ${noun}`
 
+  const legendSlices = useMemo(() => {
+    if (split.slices.length > 0) return split.slices
+    const sorted = sortByCreation(categories.items)
+    return sorted.map((c, index) => ({
+      key: c.id,
+      name: c.name,
+      value: 0,
+      slot: index < SLOT_COUNT ? index : null,
+    }))
+  }, [split.slices, categories.items])
+
+  const chartSlices = useMemo(() => {
+    if (split.total === 0 || split.slices.length === 0) {
+      return [{ key: '__empty__', name: 'No data', value: 1, slot: null as number | null }]
+    }
+    return split.slices
+  }, [split.slices, split.total])
+
   return (
-    <Card aria-labelledby={titleId}>
-      <CardHeader>
-        <CardTitle id={titleId}>{title}</CardTitle>
+    <Card aria-labelledby={titleId} className="p-5 rounded-2xl border-border/70 shadow-xs flex flex-col justify-between">
+      <CardHeader className="p-0 pb-3">
+        <CardTitle id={titleId} className="text-base font-bold tracking-tight">
+          {title}
+        </CardTitle>
       </CardHeader>
 
       {failed ? (
         <ErrorState what={`${kind.label.toLowerCase()} split`} error={failed.error} />
       ) : loading ? (
-        <>
+        <div className="py-4 grid gap-3">
           <LoadingLabel what={`${kind.label.toLowerCase()} split`} />
-          <Skeleton className="mx-auto my-4 size-44 rounded-full" />
-        </>
-      ) : split.total === 0 ? (
-        <EmptyState className="grid min-h-56 content-center gap-1">
-          <p>No {kind.label.toLowerCase()} recorded yet.</p>
-          <p>
-            <Link className="font-medium text-foreground underline underline-offset-4" to={kind.path}>
-              Add a record
-            </Link>{' '}
-            or{' '}
-            <Link className="font-medium text-foreground underline underline-offset-4" to="/category">
-              set up {kind.nounPlural}
-            </Link>
-            .
-          </p>
-        </EmptyState>
+          <Skeleton className="mx-auto size-44 rounded-full" />
+        </div>
       ) : (
-        <>
-          <div className="relative h-56">
-            {/* Centre: bucket total + kind label. Before the chart so tooltips paint above it. */}
-            <div className="pointer-events-none absolute inset-0 grid place-content-center text-center">
-              <span className="text-lg font-semibold">{formatCurrency(split.total)}</span>
-              <span className="text-xs text-muted-foreground">{kind.label}</span>
+        <div className="grid gap-4">
+          <div className="relative h-52">
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+              <span className="text-xl font-extrabold tracking-tight text-foreground">{formatCurrency(split.total)}</span>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{kind.label}</span>
             </div>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={split.slices}
+                  data={chartSlices}
                   dataKey="value"
                   nameKey="name"
-                  innerRadius="56%"
-                  outerRadius="74%"
+                  innerRadius="60%"
+                  outerRadius="78%"
                   startAngle={90}
                   endAngle={-270}
                   stroke={SURFACE[scheme]}
-                  strokeWidth={2}
+                  strokeWidth={2.5}
                   isAnimationActive={false}
                   labelLine={false}
-                  label={split.slices.length <= DIRECT_LABEL_MAX ? renderLabel : false}
+                  label={false}
                 >
-                  {split.slices.map((s) => (
-                    <Cell key={s.key} fill={slotColor(s.slot, scheme)} />
+                  {chartSlices.map((s) => (
+                    <Cell
+                      key={s.key}
+                      fill={s.key === '__empty__' || split.total === 0 ? 'hsl(var(--border))' : slotColor(s.slot, scheme)}
+                    />
                   ))}
                 </Pie>
                 <Tooltip
                   wrapperStyle={{ outline: 'none' }}
                   content={({ active, payload }) => {
                     const slice = active ? (payload?.[0]?.payload as Slice | undefined) : undefined
-                    if (!slice) return null
+                    if (!slice || slice.key === '__empty__' || split.total === 0) return null
                     return (
-                      <div className="rounded-md border bg-background px-3 py-2 text-sm shadow-md">
-                        <p className="font-medium">{slice.name}</p>
-                        <p className="text-muted-foreground">
+                      <div className="rounded-xl border border-border/80 bg-card p-3 text-xs shadow-xl">
+                        <p className="font-bold text-foreground mb-0.5">{slice.name}</p>
+                        <p className="text-muted-foreground font-medium">
                           {formatCurrency(slice.value)} · {formatShare(slice.value / split.total)}
                         </p>
                       </div>
@@ -125,63 +105,30 @@ export function SplitDonut({ kind }: { kind: KindMeta }) {
             </ResponsiveContainer>
           </div>
 
-          {!single && (
-            <ul className="grid gap-1.5 text-sm" aria-label={`${title} legend`}>
-              {split.slices.map((s) => (
-                <li key={s.key} className="flex items-center gap-2">
+          <ul className="grid gap-2 text-xs pt-1 border-t border-border/50" aria-label={`${title} legend`}>
+            {legendSlices.map((s) => (
+              <li key={s.key} className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   <span
                     aria-hidden
-                    className="size-2.5 shrink-0 rounded-sm"
-                    style={{ backgroundColor: slotColor(s.slot, scheme) }}
+                    className="size-2.5 shrink-0 rounded-full shadow-xs"
+                    style={{ backgroundColor: s.slot === null ? 'hsl(var(--muted-foreground))' : slotColor(s.slot, scheme) }}
                   />
-                  <span className="min-w-0 flex-1 truncate">{s.name}</span>
-                  <span>{formatCurrency(s.value)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
+                  <span className="min-w-0 truncate font-semibold text-foreground">{s.name}</span>
+                </div>
+                <span className="font-medium tabular-nums text-muted-foreground shrink-0">{formatCurrency(s.value)}</span>
+              </li>
+            ))}
+          </ul>
 
-          {split.emptyCategoryCount > 0 && (
-            <p className="text-xs text-muted-foreground">
+          {split.emptyCategoryCount > 0 && split.slices.length > 0 && (
+            <p className="text-[11px] text-muted-foreground italic text-center pt-1">
               {plural(split.emptyCategoryCount, noun, kind.nounPlural)} with no records yet
             </p>
           )}
-
-          <div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="-ml-3"
-              aria-expanded={showTable}
-              aria-controls={tableId}
-              onClick={() => setShowTable((v) => !v)}
-            >
-              {showTable ? 'Hide table' : 'Show as table'}
-            </Button>
-            <table id={tableId} hidden={!showTable} className="mt-2 w-full text-sm">
-              <caption className="sr-only">{title}</caption>
-              <thead>
-                <tr className="text-muted-foreground">
-                  <th scope="col" className="py-1.5 text-left font-medium">
-                    {kind.noun}
-                  </th>
-                  <th scope="col" className="py-1.5 text-right font-medium">
-                    Amount
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {split.rows.map((row) => (
-                  <tr key={row.key} className="border-t">
-                    <td className="py-1.5">{row.name}</td>
-                    <td className="py-1.5 text-right tabular-nums">{formatCurrency(row.value)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
+        </div>
       )}
     </Card>
   )
 }
+
